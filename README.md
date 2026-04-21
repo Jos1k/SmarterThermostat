@@ -1,5 +1,9 @@
 # SmarterThermostat
 
+<p align="center">
+  <img src="custom_components/smarter_thermostat/icon.png" alt="SmarterThermostat" width="128" height="128">
+</p>
+
 A Home Assistant custom integration that makes your AC smarter by using external temperature sensors to calibrate the target temperature automatically.
 
 ## What It Does
