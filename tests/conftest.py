@@ -1,12 +1,50 @@
 from unittest.mock import MagicMock
+import sys
 
 import pytest
-from homeassistant.const import UnitOfTemperature
-from homeassistant.components.climate import (
-    HVACMode,
-    HVACAction,
-    ClimateEntityFeature,
-)
+
+# Mock homeassistant if not installed
+if 'homeassistant' not in sys.modules:
+    from unittest.mock import MagicMock
+
+    # Create mock modules
+    mock_ha = MagicMock()
+    sys.modules['homeassistant'] = mock_ha
+    sys.modules['homeassistant.const'] = MagicMock()
+    sys.modules['homeassistant.components'] = MagicMock()
+    sys.modules['homeassistant.components.climate'] = MagicMock()
+
+    # Define mock enums/classes
+    class UnitOfTemperature:
+        CELSIUS = "°C"
+
+    class HVACMode:
+        OFF = "off"
+        COOL = "cool"
+        HEAT = "heat"
+        FAN_ONLY = "fan_only"
+        AUTO = "auto"
+
+    class HVACAction:
+        COOLING = "cooling"
+
+    class ClimateEntityFeature:
+        TARGET_TEMPERATURE = 1
+        FAN_MODE = 2
+        SWING_MODE = 4
+        PRESET_MODE = 8
+
+    sys.modules['homeassistant.const'].UnitOfTemperature = UnitOfTemperature
+    sys.modules['homeassistant.components.climate'].HVACMode = HVACMode
+    sys.modules['homeassistant.components.climate'].HVACAction = HVACAction
+    sys.modules['homeassistant.components.climate'].ClimateEntityFeature = ClimateEntityFeature
+else:
+    from homeassistant.const import UnitOfTemperature
+    from homeassistant.components.climate import (
+        HVACMode,
+        HVACAction,
+        ClimateEntityFeature,
+    )
 
 
 @pytest.fixture
