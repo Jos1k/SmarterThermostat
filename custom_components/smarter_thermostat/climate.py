@@ -6,9 +6,10 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, CONF_SOURCE_CLIMATE
 
@@ -22,12 +23,13 @@ async def async_setup_entry(
     async_add_entities([SmarterThermostatClimate(coordinator)])
 
 
-class SmarterThermostatClimate(ClimateEntity):
+class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
     _attr_has_entity_name = False
     _enable_turn_on_turn_off_backwards_compat = False
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
     def __init__(self, coordinator) -> None:
-        self._coordinator = coordinator
+        super().__init__(coordinator)
         self._source_entity_id = coordinator.config_entry.data[CONF_SOURCE_CLIMATE]
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_climate"
         self._attr_name = coordinator.config_entry.title
@@ -158,8 +160,3 @@ class SmarterThermostatClimate(ClimateEntity):
     @property
     def should_poll(self) -> bool:
         return False
-
-    async def async_added_to_hass(self) -> None:
-        self.async_on_remove(
-            self._coordinator.async_add_listener(self.async_write_ha_state)
-        )

@@ -146,6 +146,15 @@ if 'homeassistant' not in sys.modules:
         async def async_refresh(self):
             pass
 
+        def async_add_listener(self, callback):
+            return lambda: None
+
+    class CoordinatorEntity:
+        """Mock CoordinatorEntity."""
+        def __init__(self, coordinator):
+            self._coordinator = coordinator
+            self.coordinator = coordinator
+
     class FlowResultType:
         """Mock FlowResultType."""
         FORM = "form"
@@ -217,6 +226,7 @@ if 'homeassistant' not in sys.modules:
     sys.modules['homeassistant.components.climate'].ClimateEntity = ClimateEntity
     sys.modules['homeassistant.components.number'].NumberEntity = NumberEntity
     sys.modules['homeassistant.helpers.update_coordinator'].DataUpdateCoordinator = DataUpdateCoordinator
+    sys.modules['homeassistant.helpers.update_coordinator'].CoordinatorEntity = CoordinatorEntity
     sys.modules['homeassistant.core'].HomeAssistant = HomeAssistant
     sys.modules['homeassistant.helpers.entity_platform'].AddEntitiesCallback = AddEntitiesCallback
     sys.modules['homeassistant.data_entry_flow'].FlowResultType = FlowResultType
