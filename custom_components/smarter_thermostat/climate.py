@@ -36,7 +36,7 @@ class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def _ac_state(self):
-        return self._coordinator.hass.states.get(self._source_entity_id)
+        return self.coordinator.hass.states.get(self._source_entity_id)
 
     @property
     def supported_features(self) -> ClimateEntityFeature:
@@ -68,10 +68,10 @@ class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def current_temperature(self) -> Optional[float]:
-        if not self._coordinator.enabled:
+        if not self.coordinator.enabled:
             ac = self._ac_state
             return ac.attributes.get("current_temperature") if ac else None
-        data = self._coordinator.data
+        data = self.coordinator.data
         if data and data.get("room_temp") is not None:
             return data["room_temp"]
         ac = self._ac_state
@@ -79,7 +79,7 @@ class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def target_temperature(self) -> Optional[float]:
-        return self._coordinator.target_temp
+        return self.coordinator.target_temp
 
     @property
     def min_temp(self) -> float:
@@ -123,7 +123,7 @@ class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        data = self._coordinator.data or {}
+        data = self.coordinator.data or {}
         return {
             "calibration_offset": data.get("offset", 0.0),
             "adjusted_target": data.get("adjusted_target"),
@@ -133,13 +133,13 @@ class SmarterThermostatClimate(CoordinatorEntity, ClimateEntity):
 
     async def _async_call_ac_service(self, service: str, **kwargs) -> None:
         kwargs[ATTR_ENTITY_ID] = self._source_entity_id
-        await self._coordinator.hass.services.async_call("climate", service, kwargs)
+        await self.coordinator.hass.services.async_call("climate", service, kwargs)
 
     async def async_set_temperature(self, **kwargs) -> None:
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is not None:
-            self._coordinator.target_temp = temp
-            data = self._coordinator.data or {}
+            self.coordinator.target_temp = temp
+            data = self.coordinator.data or {}
             offset = data.get("offset", 0.0)
             adjusted = temp - offset
             adjusted = max(self.min_temp, min(self.max_temp, adjusted))

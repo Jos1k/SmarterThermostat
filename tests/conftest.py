@@ -14,6 +14,7 @@ if 'homeassistant' not in sys.modules:
     sys.modules['homeassistant.components'] = MagicMock()
     sys.modules['homeassistant.components.climate'] = MagicMock()
     sys.modules['homeassistant.components.number'] = MagicMock()
+    sys.modules['homeassistant.components.switch'] = MagicMock()
     sys.modules['homeassistant.core'] = MagicMock()
     sys.modules['homeassistant.helpers'] = MagicMock()
     sys.modules['homeassistant.helpers.entity_platform'] = MagicMock()
@@ -115,6 +116,30 @@ if 'homeassistant' not in sys.modules:
 
         def async_on_remove(self, func):
             return func
+
+    class SwitchEntity:
+        _attr_has_entity_name = False
+
+        @property
+        def unique_id(self):
+            return getattr(self, '_attr_unique_id', None)
+
+        @property
+        def name(self):
+            return getattr(self, '_attr_name', None)
+
+        @property
+        def is_on(self):
+            raise NotImplementedError
+
+        async def async_turn_on(self, **kwargs):
+            raise NotImplementedError
+
+        async def async_turn_off(self, **kwargs):
+            raise NotImplementedError
+
+        def async_write_ha_state(self):
+            pass
 
     class NumberEntity:
         _attr_has_entity_name = False
@@ -224,6 +249,7 @@ if 'homeassistant' not in sys.modules:
     sys.modules['homeassistant.components.climate'].HVACAction = HVACAction
     sys.modules['homeassistant.components.climate'].ClimateEntityFeature = ClimateEntityFeature
     sys.modules['homeassistant.components.climate'].ClimateEntity = ClimateEntity
+    sys.modules['homeassistant.components.switch'].SwitchEntity = SwitchEntity
     sys.modules['homeassistant.components.number'].NumberEntity = NumberEntity
     sys.modules['homeassistant.helpers.update_coordinator'].DataUpdateCoordinator = DataUpdateCoordinator
     sys.modules['homeassistant.helpers.update_coordinator'].CoordinatorEntity = CoordinatorEntity

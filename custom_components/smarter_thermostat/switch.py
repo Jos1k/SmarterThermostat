@@ -40,10 +40,12 @@ class SmarterThermostatSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         self._coordinator.enabled = True
+        self.async_write_ha_state()
         await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
         self._coordinator.enabled = False
+        self.async_write_ha_state()
         await self._coordinator.async_request_refresh()
 
 
@@ -69,6 +71,8 @@ class SmarterThermostatFanOnlySwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         self._coordinator.fan_only_enabled = True
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         self._coordinator.fan_only_enabled = False
+        self.async_write_ha_state()

@@ -16,7 +16,8 @@ if 'homeassistant' not in sys.modules or not hasattr(sys.modules.get('homeassist
 
     # Mock the classes
     class SwitchEntity:
-        pass
+        def async_write_ha_state(self):
+            pass
 
     class HomeAssistant:
         pass
