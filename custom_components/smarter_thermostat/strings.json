@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Smarter Thermostat",
+        "data": {
+          "name": "Name",
+          "source_climate": "Source AC climate entity",
+          "room_sensor": "Room temperature sensor",
+          "outside_sensor": "Outside temperature sensor"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Smarter Thermostat Options",
+        "data": {
+          "calibration_weight": "Calibration weight (0.0–1.0)",
+          "outside_temp_weight": "Outside temp weight (0.0–1.0)",
+          "dead_band": "Dead band (°C)",
+          "min_offset_change": "Min offset change (°C)",
+          "update_interval": "Update interval (seconds)",
+          "max_offset": "Max offset (°C)",
+          "min_mode_switch_interval": "Min mode switch interval (seconds)",
+          "fan_only_enabled": "Enable fan-only in dead band"
+        }
+      }
+    }
+  }
+}
