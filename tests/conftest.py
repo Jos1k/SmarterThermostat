@@ -13,6 +13,11 @@ if 'homeassistant' not in sys.modules:
     sys.modules['homeassistant.const'] = MagicMock()
     sys.modules['homeassistant.components'] = MagicMock()
     sys.modules['homeassistant.components.climate'] = MagicMock()
+    sys.modules['homeassistant.components.number'] = MagicMock()
+    sys.modules['homeassistant.config_entries'] = MagicMock()
+    sys.modules['homeassistant.core'] = MagicMock()
+    sys.modules['homeassistant.helpers'] = MagicMock()
+    sys.modules['homeassistant.helpers.entity_platform'] = MagicMock()
 
     # Define mock enums/classes
     class UnitOfTemperature:
@@ -34,10 +39,29 @@ if 'homeassistant' not in sys.modules:
         SWING_MODE = 4
         PRESET_MODE = 8
 
+    class NumberEntity:
+        _attr_has_entity_name = False
+
+        @property
+        def unique_id(self):
+            return self._attr_unique_id
+
+        @property
+        def name(self):
+            return self._attr_name
+
+        @property
+        def native_value(self):
+            raise NotImplementedError
+
+        async def async_set_native_value(self, value):
+            raise NotImplementedError
+
     sys.modules['homeassistant.const'].UnitOfTemperature = UnitOfTemperature
     sys.modules['homeassistant.components.climate'].HVACMode = HVACMode
     sys.modules['homeassistant.components.climate'].HVACAction = HVACAction
     sys.modules['homeassistant.components.climate'].ClimateEntityFeature = ClimateEntityFeature
+    sys.modules['homeassistant.components.number'].NumberEntity = NumberEntity
 else:
     from homeassistant.const import UnitOfTemperature
     from homeassistant.components.climate import (
