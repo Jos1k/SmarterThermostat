@@ -26,6 +26,8 @@ from custom_components.smarter_thermostat.coordinator import SmarterThermostatCo
 def mock_hass():
     hass = MagicMock(spec=HomeAssistant)
     hass.states = MagicMock()
+    hass.services = MagicMock()
+    hass.services.async_call = AsyncMock()
     return hass
 
 
@@ -165,6 +167,110 @@ class TestCoordinatorUpdate:
             assert data["offset"] == 1.5
 
 
+    @pytest.mark.asyncio
+    async def test_sends_adjusted_target_to_ac(self, mock_hass, mock_config_entry):
+        coordinator = SmarterThermostatCoordinator(mock_hass, mock_config_entry)
+        coordinator.target_temp = 24.0
+
+        ac_state = make_state("climate.test_ac", HVACMode.COOL, {
+            "current_temperature": 24.0,
+            "temperature": 24.0,
+            "hvac_action": "cooling",
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        })
+        room_state = make_state("sensor.room_temp", "26.0")
+        outside_state = make_state("sensor.outside_temp", "35.0")
+
+        mock_hass.states.get = lambda eid: {
+            "climate.test_ac": ac_state,
+            "sensor.room_temp": room_state,
+            "sensor.outside_temp": outside_state,
+        }[eid]
+
+        data = await coordinator._async_update_data()
+        assert data["adjusted_target"] is not None
+        mock_hass.services.async_call.assert_any_call(
+            "climate", "set_temperature",
+            {"entity_id": "climate.test_ac", "temperature": data["adjusted_target"]},
+        )
+
+    @pytest.mark.asyncio
+    async def test_does_not_resend_same_adjusted_target(self, mock_hass, mock_config_entry):
+        coordinator = SmarterThermostatCoordinator(mock_hass, mock_config_entry)
+        coordinator.target_temp = 24.0
+
+        ac_state = make_state("climate.test_ac", HVACMode.COOL, {
+            "current_temperature": 24.0,
+            "temperature": 24.0,
+            "hvac_action": "cooling",
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        })
+        room_state = make_state("sensor.room_temp", "26.0")
+        outside_state = make_state("sensor.outside_temp", "35.0")
+
+        mock_hass.states.get = lambda eid: {
+            "climate.test_ac": ac_state,
+            "sensor.room_temp": room_state,
+            "sensor.outside_temp": outside_state,
+        }[eid]
+
+        await coordinator._async_update_data()
+        call_count_after_first = mock_hass.services.async_call.call_count
+
+        await coordinator._async_update_data()
+        assert mock_hass.services.async_call.call_count == call_count_after_first
+
+    @pytest.mark.asyncio
+    async def test_reads_initial_target_from_ac(self, mock_hass, mock_config_entry):
+        coordinator = SmarterThermostatCoordinator(mock_hass, mock_config_entry)
+        assert coordinator.target_temp is None
+
+        ac_state = make_state("climate.test_ac", HVACMode.COOL, {
+            "current_temperature": 24.0,
+            "temperature": 22.0,
+            "hvac_action": "cooling",
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        })
+        room_state = make_state("sensor.room_temp", "24.0")
+        outside_state = make_state("sensor.outside_temp", "25.0")
+
+        mock_hass.states.get = lambda eid: {
+            "climate.test_ac": ac_state,
+            "sensor.room_temp": room_state,
+            "sensor.outside_temp": outside_state,
+        }[eid]
+
+        await coordinator._async_update_data()
+        assert coordinator.target_temp == 22.0
+
+    @pytest.mark.asyncio
+    async def test_unavailable_string_state_keeps_last_offset(self, mock_hass, mock_config_entry):
+        coordinator = SmarterThermostatCoordinator(mock_hass, mock_config_entry)
+        coordinator.target_temp = 24.0
+        coordinator._last_offset = 2.0
+
+        ac_state = make_state("climate.test_ac", HVACMode.COOL, {
+            "current_temperature": 24.0,
+            "temperature": 24.0,
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        })
+        room_state = make_state("sensor.room_temp", "unavailable")
+        outside_state = make_state("sensor.outside_temp", "35.0")
+
+        mock_hass.states.get = lambda eid: {
+            "climate.test_ac": ac_state,
+            "sensor.room_temp": room_state,
+            "sensor.outside_temp": outside_state,
+        }[eid]
+
+        data = await coordinator._async_update_data()
+        assert data["offset"] == 2.0
+
+
 class TestDeadBandLogic:
     @pytest.mark.asyncio
     async def test_cooling_within_deadband_suggests_fan_only(self, mock_hass, mock_config_entry):
@@ -215,6 +321,35 @@ class TestDeadBandLogic:
 
         data = await coordinator._async_update_data()
         assert data.get("suggested_hvac_mode") is None
+
+    @pytest.mark.asyncio
+    async def test_sends_hvac_mode_to_ac(self, mock_hass, mock_config_entry):
+        coordinator = SmarterThermostatCoordinator(mock_hass, mock_config_entry)
+        coordinator.target_temp = 24.0
+        coordinator.dead_band = 1.0
+
+        ac_state = make_state("climate.test_ac", HVACMode.COOL, {
+            "current_temperature": 24.0,
+            "temperature": 24.0,
+            "hvac_action": "cooling",
+            "min_temp": 16.0,
+            "max_temp": 30.0,
+        })
+        room_state = make_state("sensor.room_temp", "24.5")
+        outside_state = make_state("sensor.outside_temp", "25.0")
+
+        mock_hass.states.get = lambda eid: {
+            "climate.test_ac": ac_state,
+            "sensor.room_temp": room_state,
+            "sensor.outside_temp": outside_state,
+        }[eid]
+
+        data = await coordinator._async_update_data()
+        assert data["suggested_hvac_mode"] == HVACMode.FAN_ONLY
+        mock_hass.services.async_call.assert_any_call(
+            "climate", "set_hvac_mode",
+            {"entity_id": "climate.test_ac", "hvac_mode": HVACMode.FAN_ONLY},
+        )
 
     @pytest.mark.asyncio
     async def test_fan_only_disabled_no_mode_switch(self, mock_hass, mock_config_entry):

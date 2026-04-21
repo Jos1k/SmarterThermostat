@@ -5,6 +5,7 @@ from typing import Optional
 
 from homeassistant.components.climate import HVACMode
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -34,6 +35,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+_UNAVAILABLE_STATES = {"unavailable", "unknown"}
+
 
 class SmarterThermostatCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -56,6 +59,7 @@ class SmarterThermostatCoordinator(DataUpdateCoordinator):
 
         self.target_temp: Optional[float] = None
         self._last_offset: float = 0.0
+        self._last_adjusted_target: Optional[float] = None
         self._last_mode_switch_time: float = -self.min_mode_switch_interval
         self._previous_hvac_mode: Optional[str] = None
         self._in_deadband_fan_only: bool = False
@@ -67,12 +71,15 @@ class SmarterThermostatCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=self.update_interval_seconds),
         )
 
+    def _is_unavailable(self, state) -> bool:
+        return state is None or state.state in _UNAVAILABLE_STATES
+
     async def _async_update_data(self) -> dict:
         ac_state = self.hass.states.get(self._source_climate)
         room_state = self.hass.states.get(self._room_sensor)
         outside_state = self.hass.states.get(self._outside_sensor)
 
-        if ac_state is None or room_state is None or outside_state is None:
+        if self._is_unavailable(ac_state) or self._is_unavailable(room_state) or self._is_unavailable(outside_state):
             _LOGGER.warning("One or more entities unavailable, keeping last offset %.2f", self._last_offset)
             return self._build_result(self._last_offset, None)
 
@@ -83,6 +90,14 @@ class SmarterThermostatCoordinator(DataUpdateCoordinator):
         except (ValueError, TypeError):
             _LOGGER.warning("Could not parse sensor values, keeping last offset")
             return self._build_result(self._last_offset, None)
+
+        if self.target_temp is None:
+            ac_target = ac_state.attributes.get("temperature")
+            if ac_target is not None:
+                try:
+                    self.target_temp = float(ac_target)
+                except (ValueError, TypeError):
+                    pass
 
         if not self.enabled:
             self._last_offset = 0.0
@@ -113,9 +128,28 @@ class SmarterThermostatCoordinator(DataUpdateCoordinator):
                 max_temp=max_temp,
             )
 
+        if adjusted_target is not None and adjusted_target != self._last_adjusted_target:
+            await self._async_send_temperature(adjusted_target)
+            self._last_adjusted_target = adjusted_target
+
         suggested_mode = self._evaluate_deadband(room_temp, ac_state.state)
 
+        if suggested_mode is not None:
+            await self._async_send_hvac_mode(suggested_mode)
+
         return self._build_result(new_offset, suggested_mode, adjusted_target, room_temp, ac_temp, outside_temp)
+
+    async def _async_send_temperature(self, temperature: float) -> None:
+        await self.hass.services.async_call(
+            "climate", "set_temperature",
+            {ATTR_ENTITY_ID: self._source_climate, ATTR_TEMPERATURE: temperature},
+        )
+
+    async def _async_send_hvac_mode(self, hvac_mode: str) -> None:
+        await self.hass.services.async_call(
+            "climate", "set_hvac_mode",
+            {ATTR_ENTITY_ID: self._source_climate, "hvac_mode": hvac_mode},
+        )
 
     def _evaluate_deadband(self, room_temp: float, current_hvac_mode: str) -> Optional[str]:
         if not self.fan_only_enabled or self.target_temp is None:

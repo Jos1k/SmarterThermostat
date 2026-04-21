@@ -1,4 +1,4 @@
-from custom_components.smarter_thermostat.const import OUTSIDE_TEMP_REFERENCE, OUTSIDE_TEMP_SCALE
+from .const import OUTSIDE_TEMP_REFERENCE, OUTSIDE_TEMP_SCALE
 
 
 def calculate_offset(

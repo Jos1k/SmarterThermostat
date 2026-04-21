@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -104,3 +106,5 @@ class SmarterThermostatNumber(NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         setattr(self._coordinator, self._definition["coordinator_attr"], value)
+        if self._definition["coordinator_attr"] == "update_interval_seconds":
+            self._coordinator.update_interval = timedelta(seconds=int(value))
